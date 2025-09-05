@@ -209,3 +209,4 @@ __marimo__/
 # data
 *.parquet
 *.csv
+*.pkl
