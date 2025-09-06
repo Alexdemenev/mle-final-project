@@ -1,6 +1,7 @@
 import pendulum
 from airflow.decorators import dag, task
 from airflow.configuration import conf
+from steps.messages import send_telegram_failure_message, send_telegram_success_message # импортируем функции для отправки сообщений
 
 
 @dag(
@@ -9,6 +10,8 @@ from airflow.configuration import conf
     start_date=pendulum.datetime(2025, 1, 1, tz='UTC'),
     catchup=False,
     tags=['preprocessing','bank_products'],
+    on_failure_callback=send_telegram_failure_message,
+    on_success_callback=send_telegram_success_message
 )
 def preprocessing():
     import pandas as pd
