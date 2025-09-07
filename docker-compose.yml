@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  # Основной сервис рекомендаций
+  recommendations:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    command: ["python", "-m", "uvicorn", "app.app:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    volumes:
+      - .:/app
+    depends_on:
+      - events
+      - features
+    networks:
+      - app-network
+
+  # Сервис событий
+  events:
+    build: .
+    ports:
+      - "8001:8001"
+    command: ["python", "-m", "uvicorn", "app.events_service:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
+    volumes:
+      - .:/app
+    networks:
+      - app-network
+
+  # Сервис фичей
+  features:
+    build: .
+    ports:
+      - "8010:8010"
+    environment:
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+    command: ["python", "-m", "uvicorn", "app.features_service:app", "--host", "0.0.0.0", "--port", "8010", "--reload"]
+    volumes:
+      - .:/app
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

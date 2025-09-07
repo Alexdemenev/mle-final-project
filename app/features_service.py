@@ -12,7 +12,7 @@ from app import read_parquet_from_s3
 
 logger = logging.getLogger("uvicorn.error")
 
-load_dotenv('../.env')
+load_dotenv('.env')
 
 S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
 AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
@@ -58,7 +58,7 @@ sim_items_store = SimilarItems()
 async def lifespan(app: FastAPI):
     # код ниже (до yield) выполнится только один раз при запуске сервиса
     sim_items_store.load(
-        path="recsys/recommendations/"+"similar.parquet",
+        path="similar.parquet",
         columns=["item_id", "similar_item_id", "score"],
     )
     logger.info("Ready!")

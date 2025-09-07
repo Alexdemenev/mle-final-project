@@ -7,8 +7,10 @@ import boto3
 import io
 import os
 from dotenv import load_dotenv
+from io import BytesIO
+import pickle
 
-load_dotenv()
+load_dotenv('.env')
 
 from events_service import dedup_ids
 
@@ -23,8 +25,7 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
-features_store_url = "http://127.0.0.1:8010" # url для запросов к сервису features
-events_store_url = "http://127.0.0.1:8020" # url для запросов к сервису events
+features_store_url = "http://features:8010" # url для запросов к сервису features
 
 S3_BUCKET_NAME = os.getenv('S3_BUCKET_NAME')
 AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
@@ -41,6 +42,12 @@ def read_parquet_from_s3(bucket_name, s3, key):
     data = pd.read_parquet(parquet_buffer)
     
     return data
+
+def read_pickle_from_s3(bucket_name, s3, key):
+    with BytesIO() as buffer:
+        s3.download_fileobj(bucket_name, key, buffer)
+        buffer.seek(0)
+        return pickle.load(buffer)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -73,9 +80,19 @@ class Recommendations:
         """
 
         logger.info(f"Loading recommendations, type: {type}")
+        
         self._recs[type] = read_parquet_from_s3(S3_BUCKET_NAME, self.s3, path)
         if type == "personal":
-            self._recs[type] = self._recs[type].set_index("user_id")
+            self._recs[type] = self._recs[type]
+        logger.info(f"Loaded")
+    
+    def load_pickle(self, type, path, **kwargs):
+        """
+        Загружает pickle файл
+        """
+
+        logger.info(f"Loading pickle, type: {type}")
+        self._recs[type] = read_pickle_from_s3(S3_BUCKET_NAME, self.s3, path)
         logger.info(f"Loaded")
 
     def get(self, user_id: int, k: int=100):
@@ -116,7 +133,7 @@ async def recommendations_online(user_id: int, k: int = 100):
     headers = {"Content-type": "application/json", "Accept": "text/plain"}
 
     # получаем последнее событие пользователя
-    events = requests.post(events_store_url + "/get", headers=headers, params={"user_id": user_id, "k": 3})
+    events = requests.post("http://events:8001/get", headers=headers, params={"user_id": user_id, "k": 3})
     events = events.json()
     events = events["events"]
 
@@ -152,12 +169,12 @@ async def recommendations_offline(user_id: int, k: int = 100):
 
     rec_store.load(
         "personal",
-        "recsys/recommendations/" + "personal_als.parquet",
+        "recs.parquet",
         columns=["user_id", "item_id", "score"],
     )
     rec_store.load(
         "default",
-        'recsys/recommendations/' + 'top_popular.parquet',
+        'popular.parquet',
         columns=["item_id", "score"],
     )
 
