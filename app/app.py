@@ -9,10 +9,18 @@ import os
 from dotenv import load_dotenv
 from io import BytesIO
 import pickle
+from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import Histogram, Counter, Gauge
 
 load_dotenv('.env')
 
-from events_service import dedup_ids
+from app.events_service import dedup_ids
+from constants import target_cols
+
+# Создаем счетчики для метрик
+target_cols_counter = Counter("target_cols_counter", "Count of target columns", labelnames=["target"])
+recommendations_total = Counter("recommendations_total", "Total number of recommendations", labelnames=["type"])
+requests_total = Counter("requests_total", "Total number of requests", labelnames=["endpoint"])
 
 # Настройка логирования
 logging.basicConfig(
@@ -121,14 +129,45 @@ class Recommendations:
 
 rec_store = Recommendations()
 
+# Создаем метрики перед созданием приложения
+main_app_recommendations_online = Histogram(
+    # имя метрики
+    "main_app_recommendations_online",
+    #описание метрики
+    "Histogram of recommendations online",
+    #указаываем корзины для гистограммы
+    buckets=(1, 5, 10, 15)
+)
+main_app_recommendations_offline = Histogram(
+    # имя метрики
+    "main_app_recommendations_offline",
+    #описание метрики
+    "Histogram of recommendations offline",
+    #указаываем корзины для гистограммы
+    buckets=(1, 5, 10, 15)
+)
+main_app_recommendations_blended = Histogram(
+    # имя метрики
+    "main_app_recommendations_blended",
+    #описание метрики
+    "Histogram of recommendations blended",
+    #указаываем корзины для гистограммы
+    buckets=(1, 5, 10, 15)
+)
+
 # создаём приложение FastAPI
 app = FastAPI(title="recommendations", lifespan=lifespan)
+
+# инициализируем и запускаем экпортёр метрик
+instrumentator = Instrumentator()
+instrumentator.instrument(app).expose(app)
 
 @app.post("/recommendations_online")
 async def recommendations_online(user_id: int, k: int = 100):
     """
     Возвращает список онлайн-рекомендаций длиной k для пользователя user_id
     """
+    requests_total.labels(endpoint="recommendations_online").inc()
 
     headers = {"Content-type": "application/json", "Accept": "text/plain"}
 
@@ -154,9 +193,15 @@ async def recommendations_online(user_id: int, k: int = 100):
         combined = [item for item, _ in combined]
          # удаляем дубликаты, чтобы не выдавать одинаковые рекомендации
         recs = dedup_ids(combined)[:k]
+        main_app_recommendations_online.observe(len(recs))
+        recommendations_total.labels(type="online").inc(len(recs))
     else:
         recs = []
-
+        main_app_recommendations_online.observe(0)
+        recommendations_total.labels(type="online").inc(0)
+    for col in target_cols:
+        if col in recs:
+            target_cols_counter.labels(target=col).inc()
     return {"recs": recs}
 
 @app.post("/recommendations_offline/")
@@ -164,6 +209,7 @@ async def recommendations_offline(user_id: int, k: int = 100):
     """
     Возвращает список офлайн рекомендаций длиной k для пользователя user_id
     """
+    requests_total.labels(endpoint="recommendations_offline").inc()
 
     recs = []
 
@@ -179,7 +225,11 @@ async def recommendations_offline(user_id: int, k: int = 100):
     )
 
     recs = rec_store.get(user_id=user_id, k=k) 
-
+    main_app_recommendations_offline.observe(len(recs))
+    recommendations_total.labels(type="offline").inc(len(recs))
+    for col in target_cols:
+        if col in recs:
+            target_cols_counter.labels(target=col).inc()
     return {"recs": recs}
 
 
@@ -188,6 +238,7 @@ async def recommendations(user_id: int, k: int = 100):
     """
     Возвращает список рекомендаций длиной k для пользователя user_id
     """
+    requests_total.labels(endpoint="recommendations").inc()
 
     recs_offline = await recommendations_offline(user_id, k)
     recs_online = await recommendations_online(user_id, k)
@@ -217,5 +268,10 @@ async def recommendations(user_id: int, k: int = 100):
     # оставляем только первые k рекомендаций
     recs_blended = recs_blended[:k]
 
+    main_app_recommendations_blended.observe(len(recs_blended))
+    recommendations_total.labels(type="blended").inc(len(recs_blended))
+    for col in target_cols:
+        if col in recs_blended:
+            target_cols_counter.labels(target=col).inc()
     return {"recs": recs_blended}
 

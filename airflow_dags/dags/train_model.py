@@ -184,11 +184,12 @@ def train_model():
             result = als_model.similar_items(item)
             items = result[0][1:]
             scores = result[1][1:]
-            similar_items[item] = (items, scores)
+            similar_items[id_to_acc[item]] = (items, scores)
 
         similar_items_df = pd.DataFrame(similar_items).T
         similar_items_df.columns = ["similar_item_id", "score"]
         similar_items_df = similar_items_df.explode(["similar_item_id", "score"])
+        similar_items_df["similar_item_id"] = similar_items_df["similar_item_id"].map(id_to_acc)
         upload_to_s3(similar_items_df, 'similar.parquet', AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
         del similar_items_df
     

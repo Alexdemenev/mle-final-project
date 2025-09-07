@@ -32,9 +32,36 @@ events_store = EventStore()
 app = FastAPI(title="events")
 
 @app.post("/put")
-async def put(user_id: int, item_id: int):
+async def put(user_id: int, item_id: str):
     """
     Сохраняет событие для user_id, item_id
+    
+    В качестве item_id передается название счета:
+    
+    acc_savings,
+    acc_garant,
+    acc_current,
+    acc_derivative,
+    acc_salary,
+    acc_child,
+    acc_spec3,
+    acc_spec1,
+    acc_spec2,
+    acc_short_deposit,
+    acc_middle_deposit,
+    acc_long_deposit,
+    acc_digital,
+    acc_cash,
+    acc_mortgage,
+    acc_pension,
+    acc_credit,
+    acc_tax,
+    acc_credit_cart,
+    acc_securities,
+    acc_home,
+    acc_salary_payment,
+    acc_pension_loans,
+    acc_debit
     """
 
     events_store.put(user_id, item_id)

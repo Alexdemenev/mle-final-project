@@ -1,0 +1,32 @@
+global:
+  # как часто собирать метрики?
+  scrape_interval: 5s
+  
+  # если за это время сборщик не собрал метрики, то процесс прерывается
+  scrape_timeout: 3s
+  
+
+scrape_configs:
+  # имя сборщика для основного сервиса рекомендаций
+  - job_name: 'recommendations-service'
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+    - targets:
+      - recommendations:8000
+
+  # сборщик для сервиса событий
+  - job_name: 'events-service'
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+    - targets:
+      - events:8001
+
+  # сборщик для сервиса фичей
+  - job_name: 'features-service'
+    metrics_path: /metrics
+    scheme: http
+    static_configs:
+    - targets:
+      - features:8010

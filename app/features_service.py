@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import pandas as pd
 from fastapi import FastAPI
 
-from app import read_parquet_from_s3
+from app.app import read_parquet_from_s3
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -39,7 +39,7 @@ class SimilarItems:
         self._similar_items = read_parquet_from_s3(S3_BUCKET_NAME, self.s3, path)
         logger.info(f"Loaded")
 
-    def get(self, item_id: int, k: int = 10):
+    def get(self, item_id: str, k: int = 10):
         """
         Возвращает список похожих объектов
         """
@@ -69,9 +69,36 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="features", lifespan=lifespan)
 
 @app.post("/similar_items")
-async def recommendations(item_id: int, k: int = 10):
+async def recommendations(item_id: str, k: int = 10):
     """
     Возвращает список похожих объектов длиной k для item_id
+    
+    В качестве item_id передается название счета:
+    
+    acc_savings,
+    acc_garant,
+    acc_current,
+    acc_derivative,
+    acc_salary,
+    acc_child,
+    acc_spec3,
+    acc_spec1,
+    acc_spec2,
+    acc_short_deposit,
+    acc_middle_deposit,
+    acc_long_deposit,
+    acc_digital,
+    acc_cash,
+    acc_mortgage,
+    acc_pension,
+    acc_credit,
+    acc_tax,
+    acc_credit_cart,
+    acc_securities,
+    acc_home,
+    acc_salary_payment,
+    acc_pension_loans,
+    acc_debit
     """
 
     i2i = sim_items_store.get(item_id, k)
