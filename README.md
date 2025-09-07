@@ -24,5 +24,5 @@ source myproject-env/bin/activate
 * AWS_SECRET_ACCESS_KEY
 
 Токен бота и ID чата для логирования AirFlow в телеграмме
-* TOKEN=7987871770:AAHovyJvZ3y_NOTVNyMBl9ZQrBHu6pF5BlM
-* CHAT_ID=-4718420948
+* TOKEN
+* CHAT_ID
