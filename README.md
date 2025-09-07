@@ -193,3 +193,67 @@ curl -X POST "http://localhost:8010/similar_items" \
 # Просмотр метрик основного сервиса
 curl http://localhost:8000/metrics
 ```
+
+## Запуск MLflow
+
+### Подготовка к запуску MLflow
+
+1. Убедитесь, что в файле `.env` указаны все необходимые переменные для подключения к базе данных и S3:
+```bash
+DB_DESTINATION_HOST=your_db_host
+DB_DESTINATION_PORT=your_db_port
+DB_DESTINATION_NAME=your_db_name
+DB_DESTINATION_USER=your_db_user
+DB_DESTINATION_PASSWORD=your_db_password
+S3_BUCKET_NAME=your_bucket_name
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+```
+
+2. Установите MLflow (если не установлен):
+```bash
+pip install mlflow
+```
+
+### Запуск MLflow сервера
+
+1. Запустите MLflow сервер:
+```bash
+bash run_mlflow.sh
+```
+
+2. Откройте веб-интерфейс MLflow по адресу: http://localhost:5020
+
+### Что делает скрипт run_mlflow.sh
+
+- Загружает переменные окружения из файла `.env`
+- Настраивает подключение к S3 хранилищу (Yandex Cloud)
+- Запускает MLflow сервер с:
+  - Backend store: PostgreSQL база данных
+  - Artifact store: S3 бакет для хранения артефактов
+  - Host: 0.0.0.0 (доступен извне)
+  - Port: 5020
+
+### Просмотр экспериментов
+
+1. В веб-интерфейсе MLflow вы увидите список всех экспериментов
+2. Нажмите на название эксперимента для просмотра:
+   - Параметров модели
+   - Метрик
+   - Артефактов (модели, графики, логи)
+   - Временных меток запусков
+3. Логирование экспериментов происходит в S3, поэтому результаты эксперимента ``final_project_bank_alexdem`` можно увидеть только настроив подключение к S3 автора проекта
+
+### Остановка MLflow
+
+Нажмите `Ctrl+C` в терминале, где запущен MLflow сервер.
+
+## Эксперименты
+
+В папке research представлен ноутбук с анализом и предобработкой данных
+
+В папке experiments представлены два ноутбука:
+- train_model_baseline - обучение базовой модели ALS, основанной только на наличии у клиентов тех или иных банковских продукторв
+- model_improvement - обучение улучшенной модели, учитывающей также индивидуальные характеристики клиентов
+
+Финальные версии экспериментов (EDA, baseline, improvement) заллогированы в MlFlow
